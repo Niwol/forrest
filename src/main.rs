@@ -1,10 +1,7 @@
-use bevy::{input::mouse::MouseWheel, math::VectorSpace, prelude::*};
+use bevy::{input::mouse::MouseWheel, prelude::*};
 use bevy_rapier3d::prelude::*;
 use forrest::{
-    enemy::EnemyPlugin,
-    inventory::InventoryPlugin,
-    player::{CameraZoom, PlayerPlugin},
-    tree::TreePlugin,
+    enemy::EnemyPlugin, hitbox::HitboxPlugin, inventory::InventoryPlugin, player::{CameraZoom, PlayerPlugin}, tree::TreePlugin
 };
 
 fn main() {
@@ -12,7 +9,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default().disabled())
-        .add_plugins((PlayerPlugin, TreePlugin, EnemyPlugin, InventoryPlugin))
+        .add_plugins((PlayerPlugin, TreePlugin, EnemyPlugin, InventoryPlugin, HitboxPlugin))
         .add_systems(Startup, setup)
         .add_systems(Update, (exit, toggle_debug_view, handle_zoom))
         .run();
@@ -23,6 +20,7 @@ fn setup(
     mut rapier_config: ResMut<RapierConfiguration>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
+    // Camera
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 10.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
@@ -36,7 +34,7 @@ fn setup(
             z: 100.0,
         })),
         ..Default::default()
-    });
+    }).insert((RigidBody::Fixed, Collider::cuboid(50.0, 0.1, 50.0)));
 
     rapier_config.gravity = Vec3::ZERO;
 }

@@ -39,7 +39,7 @@ fn spawn_start_trees(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
-    let nb_trees = 1000;
+    let nb_trees = 10;
 
     for i in 0..nb_trees {
         let step = (i as f32 / nb_trees as f32) * PI * 2.0;

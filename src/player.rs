@@ -1,9 +1,10 @@
 use bevy::{color::palettes, math::VectorSpace, prelude::*};
-use bevy_rapier3d::{na::base, prelude::*};
+use bevy_rapier3d::prelude::*;
 
 use crate::{
     build::BuildPlugin,
-    player_input::{InputMap, PlayerAction},
+    hitbox::{Hitbox, SpawnHitboxEvent, Target},
+    player_input::{InputMap, InputParam, PlayerAction},
 };
 
 pub struct PlayerPlugin;
@@ -30,8 +31,9 @@ impl Plugin for PlayerPlugin {
                 (
                     move_player.run_if(in_state(PlayerState::Normal)),
                     interact,
-                    start_building,
+                    start_building.run_if(in_state(PlayerState::Normal)),
                     cancel_building_mode.run_if(in_state(PlayerState::BuildingMode)),
+                    attack.run_if(in_state(PlayerState::Normal)),
                 ),
             );
     }
@@ -233,15 +235,11 @@ fn highlight_interactables(
 
 fn interact(
     player: Query<Entity, With<Player>>,
-    input: Res<ButtonInput<KeyCode>>,
-    input_map: Res<InputMap>,
+    input: InputParam,
     interactable_entities: Res<InteractableEntities>,
     mut interaction_event: EventWriter<InteractionEvent>,
 ) {
-    let Some(key_code) = input_map.map.get(&PlayerAction::Interact) else {
-        return;
-    };
-    if !input.just_pressed(*key_code) {
+    if !input.action_just_pressed(PlayerAction::Interact) {
         return;
     }
 
@@ -255,32 +253,43 @@ fn interact(
     }
 }
 
-fn start_building(
-    input: Res<ButtonInput<KeyCode>>,
-    input_map: Res<InputMap>,
-    mut next_player_state: ResMut<NextState<PlayerState>>,
-) {
-    let Some(key_code) = input_map.map.get(&PlayerAction::Build) else {
-        return;
-    };
-    if !input.just_pressed(*key_code) {
+fn start_building(input: InputParam, mut next_player_state: ResMut<NextState<PlayerState>>) {
+    if !input.action_just_pressed(PlayerAction::Build) {
         return;
     }
 
     next_player_state.set(PlayerState::BuildingMode);
 }
 
-fn cancel_building_mode(
-    input: Res<ButtonInput<KeyCode>>,
-    input_map: Res<InputMap>,
-    mut next_player_state: ResMut<NextState<PlayerState>>,
-) {
-    let Some(key_code) = input_map.map.get(&PlayerAction::Cancel) else {
-        return;
-    };
-    if !input.just_pressed(*key_code) {
+fn cancel_building_mode(input: InputParam, mut next_player_state: ResMut<NextState<PlayerState>>) {
+    if !input.action_just_pressed(PlayerAction::Cancel) {
         return;
     }
 
     next_player_state.set(PlayerState::Normal);
+}
+
+#[derive(Event)]
+pub struct AttackEvent(pub Entity);
+
+fn attack(
+    input: InputParam,
+    player: Query<Entity, With<Player>>,
+    sensor: Query<&GlobalTransform, With<Parent>>,
+    mut attack_event: EventWriter<SpawnHitboxEvent>,
+) {
+    if !input.action_just_pressed(PlayerAction::Attack) {
+        return;
+    }
+
+    let player = player.single();
+    let position = sensor.single().translation();
+
+    attack_event.send(SpawnHitboxEvent(Hitbox {
+        sender: player,
+        collider: Collider::cuboid(0.2, 0.5, 0.2),
+        position,
+        target: Target::Enemies,
+        lifetime: Timer::from_seconds(0.5, TimerMode::Once),
+    }));
 }
